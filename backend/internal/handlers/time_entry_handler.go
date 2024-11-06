@@ -40,6 +40,19 @@ func GetTimeEntries(c *gin.Context) {
 	c.JSON(http.StatusOK, entries)
 }
 
+func GetTimeEntry(c *gin.Context) {
+	id := c.Param("id")
+	userID := utils.GetUserID(c)
+	var entry models.TimeEntry
+
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&entry).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Time entry not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, entry)
+}
+
 func UpdateTimeEntry(c *gin.Context) {
 	var entry models.TimeEntry
 	if err := c.ShouldBindJSON(&entry); err != nil {

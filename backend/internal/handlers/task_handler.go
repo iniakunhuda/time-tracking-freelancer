@@ -28,6 +28,19 @@ func GetTasks(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
+func GetTask(c *gin.Context) {
+	taskID := c.Param("id")
+	userID := utils.GetUserID(c)
+
+	var task models.Task
+	if err := database.DB.Where("id = ? AND user_id = ?", taskID, userID).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, task)
+}
+
 func CreateTask(c *gin.Context) {
 	var task models.Task
 	if err := c.ShouldBindJSON(&task); err != nil {

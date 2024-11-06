@@ -11,9 +11,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type AnalyticsResponse struct {
+	Date           string  `json:"date"`
+	Hours          float64 `json:"hours"`
+	TotalTasks     int64   `json:"totalTasks,omitempty"`
+	CompletedTasks int64   `json:"completedTasks,omitempty"`
+	TotalProjects  int64   `json:"totalProjects,omitempty"`
+}
+
 func GetDailyAnalytics(c *gin.Context) {
 	userID := utils.GetUserID(c)
 	var entries []models.TimeEntry
+	var result []AnalyticsResponse
 
 	dayAgo := time.Now().AddDate(0, 0, -1)
 
@@ -25,18 +34,40 @@ func GetDailyAnalytics(c *gin.Context) {
 		return
 	}
 
+	// Group by date
 	dailyTotals := make(map[string]float64)
 	for _, entry := range entries {
 		day := entry.StartTime.Format("2006-01-02")
 		dailyTotals[day] += float64(entry.Duration) / 3600
 	}
 
-	c.JSON(http.StatusOK, dailyTotals)
+	// Get tasks and projects count
+	var totalTasks int64
+	var completedTasks int64
+	var totalProjects int64
+
+	database.DB.Model(&models.Task{}).Where("user_id = ?", userID).Count(&totalTasks)
+	database.DB.Model(&models.Task{}).Where("user_id = ? AND status = ?", userID, "COMPLETED").Count(&completedTasks)
+	database.DB.Model(&models.Project{}).Where("user_id = ?", userID).Count(&totalProjects)
+
+	// Convert to response format
+	for date, hours := range dailyTotals {
+		result = append(result, AnalyticsResponse{
+			Date:           date,
+			Hours:          hours,
+			TotalTasks:     totalTasks,
+			CompletedTasks: completedTasks,
+			TotalProjects:  totalProjects,
+		})
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 func GetWeeklyAnalytics(c *gin.Context) {
 	userID := utils.GetUserID(c)
 	var entries []models.TimeEntry
+	var result []AnalyticsResponse
 
 	weekAgo := time.Now().AddDate(0, 0, -7)
 
@@ -48,18 +79,40 @@ func GetWeeklyAnalytics(c *gin.Context) {
 		return
 	}
 
-	dailyTotals := make(map[string]float64)
+	// Group by day of week
+	weeklyTotals := make(map[string]float64)
 	for _, entry := range entries {
-		day := entry.StartTime.Format("Mon")
-		dailyTotals[day] += float64(entry.Duration) / 3600
+		day := entry.StartTime.Format("2006-01-02")
+		weeklyTotals[day] += float64(entry.Duration) / 3600
 	}
 
-	c.JSON(http.StatusOK, dailyTotals)
+	// Get tasks and projects count
+	var totalTasks int64
+	var completedTasks int64
+	var totalProjects int64
+
+	database.DB.Model(&models.Task{}).Where("user_id = ?", userID).Count(&totalTasks)
+	database.DB.Model(&models.Task{}).Where("user_id = ? AND status = ?", userID, "COMPLETED").Count(&completedTasks)
+	database.DB.Model(&models.Project{}).Where("user_id = ?", userID).Count(&totalProjects)
+
+	// Convert to response format
+	for date, hours := range weeklyTotals {
+		result = append(result, AnalyticsResponse{
+			Date:           date,
+			Hours:          hours,
+			TotalTasks:     totalTasks,
+			CompletedTasks: completedTasks,
+			TotalProjects:  totalProjects,
+		})
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 func GetMonthlyAnalytics(c *gin.Context) {
 	userID := utils.GetUserID(c)
 	var entries []models.TimeEntry
+	var result []AnalyticsResponse
 
 	monthAgo := time.Now().AddDate(0, -1, 0)
 
@@ -71,58 +124,32 @@ func GetMonthlyAnalytics(c *gin.Context) {
 		return
 	}
 
+	// Group by month
 	monthlyTotals := make(map[string]float64)
 	for _, entry := range entries {
-		month := entry.StartTime.Format("Jan")
+		month := entry.StartTime.Format("2006-01-02")
 		monthlyTotals[month] += float64(entry.Duration) / 3600
 	}
 
-	c.JSON(http.StatusOK, monthlyTotals)
-}
+	// Get tasks and projects count
+	var totalTasks int64
+	var completedTasks int64
+	var totalProjects int64
 
-func GetRangeAnalytics(c *gin.Context) {
-	userID := utils.GetUserID(c)
-	var entries []models.TimeEntry
+	database.DB.Model(&models.Task{}).Where("user_id = ?", userID).Count(&totalTasks)
+	database.DB.Model(&models.Task{}).Where("user_id = ? AND status = ?", userID, "COMPLETED").Count(&completedTasks)
+	database.DB.Model(&models.Project{}).Where("user_id = ?", userID).Count(&totalProjects)
 
-	startTime := c.Query("start_time")
-	endTime := c.Query("end_time")
-
-	err := database.DB.Where("user_id = ? AND start_time >= ? AND start_time <= ?", userID, startTime, endTime).
-		Find(&entries).Error
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching analytics"})
-		return
+	// Convert to response format
+	for date, hours := range monthlyTotals {
+		result = append(result, AnalyticsResponse{
+			Date:           date,
+			Hours:          hours,
+			TotalTasks:     totalTasks,
+			CompletedTasks: completedTasks,
+			TotalProjects:  totalProjects,
+		})
 	}
 
-	rangeTotals := make(map[string]float64)
-	for _, entry := range entries {
-		day := entry.StartTime.Format("2006-01-02")
-		rangeTotals[day] += float64(entry.Duration) / 3600
-	}
-
-	c.JSON(http.StatusOK, rangeTotals)
-}
-
-func GetYearlyAnalytics(c *gin.Context) {
-	userID := utils.GetUserID(c)
-	var entries []models.TimeEntry
-
-	yearAgo := time.Now().AddDate(-1, 0, 0)
-
-	err := database.DB.Where("user_id = ? AND start_time >= ?", userID, yearAgo).
-		Find(&entries).Error
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching analytics"})
-		return
-	}
-
-	yearlyTotals := make(map[string]float64)
-	for _, entry := range entries {
-		year := entry.StartTime.Format("2006")
-		yearlyTotals[year] += float64(entry.Duration) / 3600
-	}
-
-	c.JSON(http.StatusOK, yearlyTotals)
+	c.JSON(http.StatusOK, result)
 }

@@ -22,6 +22,19 @@ func GetProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, projects)
 }
 
+func GetProject(c *gin.Context) {
+	projectID := c.Param("id")
+	userID := utils.GetUserID(c)
+	var project models.Project
+
+	if err := database.DB.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, project)
+}
+
 func CreateProject(c *gin.Context) {
 	var project models.Project
 	if err := c.ShouldBindJSON(&project); err != nil {

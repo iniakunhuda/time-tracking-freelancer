@@ -31,7 +31,7 @@ func main() {
 
 	// CORS middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -55,18 +55,21 @@ func main() {
 		{
 			// Projects
 			protected.GET("/projects", handlers.GetProjects)
+			protected.GET("/projects/:id", handlers.GetProject)
 			protected.POST("/projects", handlers.CreateProject)
 			protected.PUT("/projects/:id", handlers.UpdateProject)
 			protected.DELETE("/projects/:id", handlers.DeleteProject)
 
 			// Time entries
 			protected.GET("/time-entries", handlers.GetTimeEntries)
+			protected.GET("/time-entries/:id", handlers.GetTimeEntry)
 			protected.POST("/time-entries", handlers.CreateTimeEntry)
 			protected.PUT("/time-entries/:id", handlers.UpdateTimeEntry)
 			protected.DELETE("/time-entries/:id", handlers.DeleteTimeEntry)
 
 			// Tasks
 			protected.GET("/tasks", handlers.GetTasks)
+			protected.GET("/tasks/:id", handlers.GetTask)
 			protected.POST("/tasks", handlers.CreateTask)
 			protected.PUT("/tasks/:id", handlers.UpdateTask)
 			protected.DELETE("/tasks/:id", handlers.DeleteTask)

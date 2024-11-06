@@ -12,9 +12,25 @@ import (
 )
 
 type InvoiceRequest struct {
-	ProjectID uint      `json:"project_id"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
+	ProjectID uint   `json:"projectId"` // Changed to match frontend
+	StartDate string `json:"startDate"` // Changed to string
+	EndDate   string `json:"endDate"`   // Changed to string
+}
+
+type InvoiceEntry struct {
+	Date        string  `json:"date"`
+	Hours       float64 `json:"hours"`
+	Description string  `json:"description,omitempty"`
+}
+
+type InvoiceResponse struct {
+	ProjectName string         `json:"projectName"`
+	StartDate   string         `json:"startDate"`
+	EndDate     string         `json:"endDate"`
+	TotalHours  float64        `json:"totalHours"`
+	HourlyRate  float64        `json:"hourlyRate"`
+	TotalAmount float64        `json:"totalAmount"`
+	Entries     []InvoiceEntry `json:"entries"`
 }
 
 func GenerateInvoice(c *gin.Context) {
@@ -23,6 +39,22 @@ func GenerateInvoice(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Parse dates
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start date format"})
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end date format"})
+		return
+	}
+
+	// Add one day to endDate to include the entire last day
+	endDate = endDate.Add(24 * time.Hour)
 
 	userID := utils.GetUserID(c)
 
@@ -33,9 +65,9 @@ func GenerateInvoice(c *gin.Context) {
 	}
 
 	var entries []models.TimeEntry
-	err := database.DB.Where(
+	err = database.DB.Where(
 		"project_id = ? AND user_id = ? AND start_time BETWEEN ? AND ?",
-		req.ProjectID, userID, req.StartDate, req.EndDate,
+		req.ProjectID, userID, startDate, endDate,
 	).Find(&entries).Error
 
 	if err != nil {
@@ -43,24 +75,38 @@ func GenerateInvoice(c *gin.Context) {
 		return
 	}
 
-	// Calculate total hours and amount
-	var totalSeconds int64
+	// Group entries by date
+	entriesByDate := make(map[string]float64)
 	for _, entry := range entries {
-		totalSeconds += entry.Duration
+		date := entry.StartTime.Format("2006-01-02")
+		entriesByDate[date] += float64(entry.Duration) / 3600 // Convert seconds to hours
 	}
 
-	totalHours := float64(totalSeconds) / 3600
+	// Create formatted entries
+	var formattedEntries []InvoiceEntry
+	for date, hours := range entriesByDate {
+		formattedEntries = append(formattedEntries, InvoiceEntry{
+			Date:  date,
+			Hours: hours,
+		})
+	}
+
+	// Calculate totals
+	var totalHours float64
+	for _, hours := range entriesByDate {
+		totalHours += hours
+	}
 	totalAmount := totalHours * project.HourlyRate
 
-	invoice := gin.H{
-		"project_name": project.Name,
-		"start_date":   req.StartDate,
-		"end_date":     req.EndDate,
-		"total_hours":  totalHours,
-		"hourly_rate":  project.HourlyRate,
-		"total_amount": totalAmount,
-		"entries":      entries,
+	response := InvoiceResponse{
+		ProjectName: project.Name,
+		StartDate:   req.StartDate,
+		EndDate:     req.EndDate,
+		TotalHours:  totalHours,
+		HourlyRate:  project.HourlyRate,
+		TotalAmount: totalAmount,
+		Entries:     formattedEntries,
 	}
 
-	c.JSON(http.StatusOK, invoice)
+	c.JSON(http.StatusOK, response)
 }
