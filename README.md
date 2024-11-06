@@ -30,6 +30,58 @@ A full-stack time tracking application built with React and Go, designed for fre
 - PostgreSQL database
 - JWT for authentication
 
+
+## Screenshot
+
+<table>
+    <tr>
+        <td>
+            <img src="images/image.png" />
+            List Project
+        </td>
+        <td>
+            <img src="images/image1.png" />
+            Add Project
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="images/image4.png" />
+            List Task
+        </td>
+        <td>
+            <img src="images/image5.png" />
+            Add Task
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="images/image2.png" />
+            Detail Time Tracking by Task
+        </td>
+        <td>
+            <img src="images/image3.png" />
+            Time Tracking Dashboard
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="images/image6.png" />
+            Analytics Daily, Weekly, and Monthly
+        </td>
+        <td>
+            <img src="images/image7.png" />
+            Generate Report based Start Date and End Date
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="images/image8.png" />
+            PDF Report Invoice
+        </td>
+    </tr>
+</table>
+
 ## Prerequisites
 
 Before you begin, ensure you have installed:
